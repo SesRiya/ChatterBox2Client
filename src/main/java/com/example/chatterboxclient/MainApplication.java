@@ -66,7 +66,7 @@ public class MainApplication extends Application {
         //TODO common method to build protocol messages
         String login = "LOGIN:" + name + ":" + password;
 
-        System.out.println(String.format("Password for user [%s]: [%s]", name, encryptMessage(password)));
+//        System.out.println(String.format("Password for user [%s]: [%s]", name, encryptMessage(password)));
 
         client.sendMessage(login, name);
 
