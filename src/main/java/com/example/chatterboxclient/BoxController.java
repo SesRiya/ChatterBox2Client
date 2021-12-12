@@ -20,9 +20,10 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.sql.SQLException;
 import java.util.ResourceBundle;
 
-import static com.example.chatterboxclient.MainApplication.*;
+import static com.example.chatterboxclient.MainApplication.userName;
 
 public class BoxController extends Application implements Initializable {
     @FXML
@@ -31,6 +32,7 @@ public class BoxController extends Application implements Initializable {
     public TextArea result;
     @FXML
     TextField tf_receiver;
+
 
     public BoxController() {
 
@@ -58,10 +60,10 @@ public class BoxController extends Application implements Initializable {
         String msg = input.getText();
         //SEND:<sender>:<receiver>:message
 
-
         String command = "SEND:" + userName + ":" + rcvName + ":" + msg;
         try {
-            MainApplication.client.sendMessage(command);
+            MainApplication.client.sendMessage(command, userName);
+
         } catch (InvalidAlgorithmParameterException e) {
             e.printStackTrace();
         } catch (NoSuchPaddingException e) {
@@ -78,9 +80,11 @@ public class BoxController extends Application implements Initializable {
             e.printStackTrace();
         } catch (InvalidKeyException e) {
             e.printStackTrace();
+        } catch (SQLException | ClassNotFoundException e) {
+            e.printStackTrace();
         }
-    }
 
+    }
 
 
 }

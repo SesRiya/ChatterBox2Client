@@ -1,6 +1,7 @@
 package com.example.chatterboxclient.client;
 
 import com.example.chatterboxclient.cipher.CipherAES;
+import com.example.chatterboxclient.utils.DbUtils;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 
@@ -13,20 +14,25 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static com.example.chatterboxclient.cipher.CipherAES.encrypt;
 
 public class SocketClient extends Thread {
+    private static final String SECRET = "Open Sesame";
     private static TextArea result;
-    private TextArea textArea;
-    public TextField input;
     private static Socket socket;
+    public TextField input;
+    private TextArea textArea;
     private BufferedReader bufferedReader;
     private PrintWriter printWriter;
 
-    private static final String SECRET = "Open Sesame";
-
-
+    private Connection connection;
+    private String transactionId = null;
 
     public SocketClient(String serverAddress, int port) throws IOException {
         socket = new Socket(serverAddress, port);
@@ -62,25 +68,34 @@ public class SocketClient extends Thread {
             }
         }
 
-        if(socket.isClosed()){
+        if (socket.isClosed()) {
             System.out.println("Socket closed");
         }
-    }
-
-
-    public void setTextArea(TextArea textArea) {
-        result = textArea;
     }
 
     public TextArea getTextArea() {
         return result;
     }
 
-    public void sendMessage(String message) throws InvalidAlgorithmParameterException, NoSuchPaddingException, UnsupportedEncodingException, IllegalBlockSizeException, InvalidKeySpecException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+    public void setTextArea(TextArea textArea) {
+        result = textArea;
+    }
+
+    public void sendMessage(String message, String userName) throws InvalidAlgorithmParameterException, NoSuchPaddingException, UnsupportedEncodingException, IllegalBlockSizeException, InvalidKeySpecException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, SQLException, ClassNotFoundException {
+
+        if (transactionId == null) {
+            transactionId = UUID.randomUUID().toString();
+        }
 
         //encrypt message
-        String encryptedMessage = encryptMessage(message);;
-        System.out.println("Encrypted:"+encryptedMessage);
+        String encryptedMessage = encryptMessage(message + ":" + transactionId);
+        System.out.println("Encrypted:" + encryptedMessage);
+
+        connection = DbUtils.connectToDb();
+        String clientId = getUserClientId(userName);
+
+        //log to History table transaction and message
+        insertHistory(transactionId, clientId, encryptedMessage, "Send");
 
         //This thread is used to send messages to the server
         //Thread is destroyed by the JVM when the run method completes
@@ -98,7 +113,7 @@ public class SocketClient extends Thread {
 
         } else if ("invalid".equalsIgnoreCase(response)) {
             return false;
-        }else{
+        } else {
             return false;
         }
 
@@ -115,6 +130,28 @@ public class SocketClient extends Thread {
         String decryptedMessage = CipherAES.decrpyt(message, SECRET);
         System.out.println("Decrypted message:" + decryptedMessage);
         return decryptedMessage;
+    }
+
+    private void insertHistory(String guid, String clientId, String message, String action) throws SQLException {
+        String timestamp = LocalDateTime.now().toString();
+        DbUtils.updateQuery(connection, "INSERT INTO history (Id, ClientId, Timestamp, Message, Action, Source) VALUES ('"
+                + guid + "', '"
+                + clientId + "', ' "
+                + timestamp + "', '"
+                + message + "', '"
+                + action + "', "
+                + "'Client');");
+    }
+
+    private String getUserClientId(String userName) throws SQLException {
+        ResultSet resultSet = DbUtils.executeQuery(connection, "SELECT * FROM CLIENTINFO WHERE USERNAME = '" + userName +  "'" );
+        while(resultSet.next()){
+            String clientId = resultSet.getString("ClientId");
+            System.out.println("ClientId: " + clientId);
+            return clientId;
+        }
+
+        return null;
     }
 
 }

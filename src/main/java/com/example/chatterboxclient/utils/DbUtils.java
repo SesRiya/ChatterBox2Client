@@ -20,4 +20,10 @@ public class DbUtils {
 
         return rs;
     }
+
+    public static int updateQuery(Connection connection, String query) throws SQLException {
+        Statement s = connection.createStatement();
+        return s.executeUpdate(query);
+    }
+
 }
